@@ -42,19 +42,61 @@ function Index() {
     if (len < 280) return 34;
     return 30;
   })();
+  const waitForImages = async (root: HTMLElement) => {
+    const imgs = Array.from(root.querySelectorAll("img"));
+    console.log(`[export] waiting for ${imgs.length} image(s)...`);
+    await Promise.all(
+      imgs.map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (img.complete && img.naturalWidth > 0) return resolve();
+            img.onload = () => resolve();
+            img.onerror = () => {
+              console.warn("[export] image failed to load:", img.src);
+              resolve();
+            };
+          })
+      )
+    );
+    if ((document as any).fonts?.ready) {
+      await (document as any).fonts.ready;
+      console.log("[export] fonts ready");
+    }
+  };
+
   const renderCanvas = async () => {
     if (!cardRef.current) throw new Error("Card element not found");
-    return await html2canvas(cardRef.current, {
-      width: 1080,
-      height: 1080,
-      windowWidth: 1080,
-      windowHeight: 1080,
-      scale: 1,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: "#0F172A",
-      logging: false,
-    });
+    const el = cardRef.current;
+    const scaledWrapper = el.parentElement as HTMLElement | null;
+    const outerWrapper = scaledWrapper?.parentElement as HTMLElement | null;
+
+    // Temporarily neutralize the preview scale transform so html2canvas
+    // captures the card at its real 1080x1080 pixel size.
+    const prevScaled = scaledWrapper?.style.transform ?? "";
+    const prevOuter = outerWrapper?.style.transform ?? "";
+    if (scaledWrapper) scaledWrapper.style.transform = "none";
+    if (outerWrapper) outerWrapper.style.transform = "none";
+
+    try {
+      await waitForImages(el);
+      console.log("[export] calling html2canvas...");
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: null,
+        width: 1080,
+        height: 1080,
+        windowWidth: 1080,
+        windowHeight: 1080,
+        logging: true,
+      });
+      console.log(`[export] canvas ready: ${canvas.width}x${canvas.height}`);
+      return canvas;
+    } finally {
+      if (scaledWrapper) scaledWrapper.style.transform = prevScaled;
+      if (outerWrapper) outerWrapper.style.transform = prevOuter;
+    }
   };
 
   const triggerDownload = (dataUrl: string, filename: string) => {
@@ -69,14 +111,17 @@ function Index() {
   const exportImage = async (type: "png" | "jpg") => {
     try {
       setExporting(true);
+      console.log(`[export] starting ${type} export`);
       const canvas = await renderCanvas();
       const mime = type === "png" ? "image/png" : "image/jpeg";
       const ext = type === "png" ? "png" : "jpg";
       const dataUrl = canvas.toDataURL(mime, 0.95);
       triggerDownload(dataUrl, `podcast-quote-card.${ext}`);
+      console.log(`[export] ${type} downloaded`);
     } catch (err) {
-      console.error("Export failed:", err);
-      alert("Export failed. Please try again.");
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[export] failed:", err);
+      alert(`Export Error: ${msg}`);
     } finally {
       setExporting(false);
     }
@@ -96,12 +141,31 @@ function Index() {
         }
       });
     } catch (err) {
-      console.error("Copy failed:", err);
-      alert("Copy failed. Please try again.");
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[export] copy failed:", err);
+      alert(`Copy Error: ${msg}`);
     } finally {
       setExporting(false);
     }
   };
+
+  const debugExport = async () => {
+    console.log("=== Debug Export ===");
+    console.log("cardRef.current:", cardRef.current);
+    if (!cardRef.current) return;
+    console.log("rect:", cardRef.current.getBoundingClientRect());
+    console.log("images:", cardRef.current.querySelectorAll("img").length);
+    try {
+      const canvas = await renderCanvas();
+      console.log("debug canvas:", canvas.width, "x", canvas.height);
+      alert(`Debug OK — canvas ${canvas.width}x${canvas.height}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("debug failed:", err);
+      alert(`Debug Error: ${msg}`);
+    }
+  };
+
 
   const reset = () => {
     setPhoto(null);
