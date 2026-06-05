@@ -403,14 +403,27 @@ function QuoteCard({
           flexDirection: "column",
           justifyContent: "space-between",
           color: "#FFFFFF",
+          fontFamily: '"Cairo", sans-serif',
         }}
       >
-        <div style={{ textAlign: "left", fontSize: 22, fontWeight: 500, opacity: 0.85, letterSpacing: "0.5px" }}>
+        <div
+          dir="rtl"
+          style={{
+            textAlign: "right",
+            fontSize: 24,
+            fontWeight: 500,
+            color: "#CBD5E1",
+            letterSpacing: "0.5px",
+            fontFamily: '"Cairo", sans-serif',
+            unicodeBidi: "plaintext",
+          }}
+        >
           {podcast}
         </div>
 
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "32px 0" }}>
           <p
+            dir="rtl"
             style={{
               fontSize: quoteFontSize,
               lineHeight: 1.7,
@@ -419,6 +432,8 @@ function QuoteCard({
               margin: 0,
               textAlign: "right",
               wordBreak: "break-word",
+              fontFamily: '"Cairo", sans-serif',
+              unicodeBidi: "plaintext",
             }}
           >
             {quote}
@@ -428,13 +443,22 @@ function QuoteCard({
         <div style={{ display: "flex", justifyContent: "flex-start" }}>
           {guest && (
             <div
+              dir="rtl"
               style={{
+                width: 320,
+                height: 80,
                 backgroundColor: "#FFFFFF",
                 color: "#000000",
-                padding: "14px 28px",
                 borderRadius: 4,
-                fontSize: 26,
+                fontSize: 28,
                 fontWeight: 700,
+                fontFamily: '"Cairo", sans-serif',
+                unicodeBidi: "plaintext",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                lineHeight: 1,
               }}
             >
               {guest}
