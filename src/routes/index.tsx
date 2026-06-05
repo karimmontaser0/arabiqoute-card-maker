@@ -22,7 +22,26 @@ function Index() {
   const [dragOver, setDragOver] = useState(false);
   const [exporting, setExporting] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-...
+  const handleFile = useCallback((file: File) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    setPhoto(url);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (photo) URL.revokeObjectURL(photo);
+    };
+  }, [photo]);
+
+  const quoteFontSize = (() => {
+    const len = quote.length;
+    if (len < 80) return 54;
+    if (len < 140) return 46;
+    if (len < 200) return 40;
+    if (len < 280) return 34;
+    return 30;
+  })();
   const renderCanvas = async () => {
     if (!cardRef.current) throw new Error("Card element not found");
     return await html2canvas(cardRef.current, {
