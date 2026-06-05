@@ -78,17 +78,34 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lovable App" },
-      { name: "description", content: "Generate elegant Arabic podcast quote cards for social media." },
+      {
+        name: "description",
+        content: "Generate elegant Arabic podcast quote cards for social media.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Generate elegant Arabic podcast quote cards for social media." },
+      {
+        property: "og:description",
+        content: "Generate elegant Arabic podcast quote cards for social media.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Generate elegant Arabic podcast quote cards for social media." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6c29905c-36a1-461b-997e-ce0909f0047e/id-preview-1a1aa339--bde1f131-a567-422e-97bf-6ea3e045d737.lovable.app-1780691697291.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6c29905c-36a1-461b-997e-ce0909f0047e/id-preview-1a1aa339--bde1f131-a567-422e-97bf-6ea3e045d737.lovable.app-1780691697291.png" },
+      {
+        name: "twitter:description",
+        content: "Generate elegant Arabic podcast quote cards for social media.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6c29905c-36a1-461b-997e-ce0909f0047e/id-preview-1a1aa339--bde1f131-a567-422e-97bf-6ea3e045d737.lovable.app-1780691697291.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6c29905c-36a1-461b-997e-ce0909f0047e/id-preview-1a1aa339--bde1f131-a567-422e-97bf-6ea3e045d737.lovable.app-1780691697291.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -96,7 +113,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;900&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap",
       },
     ],
   }),
@@ -108,7 +125,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ar">
       <head>
         <HeadContent />
       </head>
