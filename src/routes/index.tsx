@@ -81,7 +81,7 @@ function Index() {
       await waitForImages(el);
       console.log("[export] calling html2canvas...");
       const canvas = await html2canvas(el, {
-        scale: 2,
+        scale: 1,
         useCORS: true,
         allowTaint: false,
         backgroundColor: null,
@@ -175,14 +175,14 @@ function Index() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100" style={{ fontFamily: "'Cairo', sans-serif" }}>
-      <header className="border-b border-white/5 px-8 py-5">
+    <div className="min-h-screen bg-[#020617] text-[#FFFFFF]" style={{ fontFamily: "'Cairo', sans-serif" }}>
+      <header className="border-b border-[#1E293B] px-8 py-5">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div>
             <h1 className="text-lg font-bold tracking-tight">Arabic Podcast Quote Generator</h1>
-            <p className="text-xs text-slate-400">Premium 1080×1080 cards for LinkedIn, Instagram, X</p>
+            <p className="text-xs text-[#94A3B8]">Premium 1080×1080 cards for LinkedIn, Instagram, X</p>
           </div>
-          <div className="text-xs text-slate-500">v1.0</div>
+          <div className="text-xs text-[#94A3B8]">v1.0</div>
         </div>
       </header>
 
@@ -199,20 +199,20 @@ function Index() {
               if (f) handleFile(f);
             }}
             className={`rounded-xl border-2 border-dashed p-6 text-center transition ${
-              dragOver ? "border-sky-400 bg-sky-400/5" : "border-white/10 bg-white/[0.02]"
+              dragOver ? "border-[#94A3B8] bg-[#0F172A]" : "border-[#1E293B] bg-[#020617]"
             }`}
           >
             {photo ? (
               <div className="space-y-3">
                 <img src={photo} alt="guest" className="mx-auto h-32 w-32 rounded-lg object-cover" />
-                <button onClick={() => setPhoto(null)} className="text-xs text-slate-400 hover:text-white">
+                <button onClick={() => setPhoto(null)} className="text-xs text-[#94A3B8] hover:text-[#FFFFFF]">
                   Remove
                 </button>
               </div>
             ) : (
               <label className="block cursor-pointer">
-                <div className="text-sm text-slate-300">Drop guest photo or click to upload</div>
-                <div className="mt-1 text-xs text-slate-500">PNG, JPG up to 10MB</div>
+                <div className="text-sm text-[#FFFFFF]">Drop guest photo or click to upload</div>
+                <div className="mt-1 text-xs text-[#94A3B8]">PNG, JPG up to 10MB</div>
                 <input
                   type="file"
                   accept="image/*"
@@ -228,7 +228,7 @@ function Index() {
               value={podcast}
               onChange={(e) => setPodcast(e.target.value)}
               dir="rtl"
-              className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-right outline-none focus:border-sky-400"
+              className="w-full rounded-lg border border-[#1E293B] bg-[#020617] px-3 py-2 text-right text-sm text-[#FFFFFF] outline-none focus:border-[#94A3B8]"
             />
           </Field>
 
@@ -237,7 +237,7 @@ function Index() {
               value={guest}
               onChange={(e) => setGuest(e.target.value)}
               dir="rtl"
-              className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-right outline-none focus:border-sky-400"
+              className="w-full rounded-lg border border-[#1E293B] bg-[#020617] px-3 py-2 text-right text-sm text-[#FFFFFF] outline-none focus:border-[#94A3B8]"
             />
           </Field>
 
@@ -247,38 +247,38 @@ function Index() {
               onChange={(e) => setQuote(e.target.value)}
               dir="rtl"
               rows={7}
-              className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-right leading-relaxed outline-none focus:border-sky-400"
+              className="w-full resize-none rounded-lg border border-[#1E293B] bg-[#020617] px-3 py-2 text-right text-sm leading-relaxed text-[#FFFFFF] outline-none focus:border-[#94A3B8]"
             />
           </Field>
 
           <div className="grid grid-cols-2 gap-2 pt-2">
             <button
               onClick={() => exportImage("png")}
-              className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
+              className="rounded-lg bg-[#FFFFFF] px-4 py-2.5 text-sm font-semibold text-[#020617] transition hover:bg-[#FFFFFF]"
             >
               Download PNG
             </button>
             <button
               onClick={() => exportImage("jpg")}
-              className="rounded-lg border border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              className="rounded-lg border border-[#1E293B] bg-[#020617] px-4 py-2.5 text-sm font-semibold text-[#FFFFFF] transition hover:bg-[#0F172A]"
             >
               Download JPG
             </button>
             <button
               onClick={copyImage}
-              className="rounded-lg border border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
+              className="rounded-lg border border-[#1E293B] bg-[#020617] px-4 py-2.5 text-sm font-medium text-[#FFFFFF] transition hover:bg-[#0F172A]"
             >
               Copy Image
             </button>
             <button
               onClick={reset}
-              className="rounded-lg border border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/10"
+              className="rounded-lg border border-[#1E293B] bg-[#020617] px-4 py-2.5 text-sm font-medium text-[#94A3B8] transition hover:bg-[#0F172A]"
             >
               Reset
             </button>
             <button
               onClick={debugExport}
-              className="col-span-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-200 transition hover:bg-amber-500/20"
+              className="col-span-2 rounded-lg border border-[#1E293B] bg-[#0F172A] px-4 py-2 text-xs font-medium text-[#FFFFFF] transition hover:bg-[#020617]"
             >
               Debug Export (logs to console)
             </button>
@@ -288,9 +288,9 @@ function Index() {
         {/* Preview */}
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <div className="text-xs uppercase tracking-wider text-slate-500">Live Preview · 1080×1080</div>
+            <div className="text-xs uppercase tracking-wider text-[#94A3B8]">Live Preview · 1080×1080</div>
           </div>
-          <div className="overflow-hidden rounded-xl border border-white/10 bg-black/30 p-4">
+          <div className="overflow-hidden rounded-xl border border-[#1E293B] bg-[#020617] p-4">
             <div className="mx-auto" style={{ width: "100%", maxWidth: 720 }}>
               <div
                 style={{
@@ -331,7 +331,7 @@ function Index() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="mb-1.5 text-xs font-medium uppercase tracking-wider text-slate-400">{label}</div>
+      <div className="mb-1.5 text-xs font-medium uppercase tracking-wider text-[#94A3B8]">{label}</div>
       {children}
     </label>
   );
@@ -359,7 +359,7 @@ function QuoteCard({
         width: 1080,
         height: 1080,
         backgroundColor: "#0F172A",
-        color: "#ffffff",
+        color: "#FFFFFF",
         fontFamily: "'Cairo', sans-serif",
         display: "flex",
         flexDirection: "row-reverse",
@@ -367,7 +367,7 @@ function QuoteCard({
         overflow: "hidden",
       }}
     >
-      <div style={{ width: "42%", height: "100%", position: "relative", backgroundColor: "#1e293b" }}>
+      <div style={{ width: "42%", height: "100%", position: "relative", backgroundColor: "#0F172A" }}>
         {photo ? (
           <img
             src={photo}
@@ -375,11 +375,11 @@ function QuoteCard({
             style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
           />
         ) : (
-          <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "#475569", fontSize: 18 }}>
+          <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontSize: 18 }}>
             Guest Photo
           </div>
         )}
-        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }} />
+        <div style={{ position: "absolute", inset: 0, backgroundColor: "#000000", opacity: 0.35 }} />
       </div>
 
       <div
@@ -391,7 +391,7 @@ function QuoteCard({
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          color: "#fff",
+          color: "#FFFFFF",
         }}
       >
         <div style={{ textAlign: "left", fontSize: 22, fontWeight: 500, opacity: 0.85, letterSpacing: "0.5px" }}>
@@ -404,7 +404,7 @@ function QuoteCard({
               fontSize: quoteFontSize,
               lineHeight: 1.7,
               fontWeight: 700,
-              color: "#fff",
+              color: "#FFFFFF",
               margin: 0,
               textAlign: "right",
               wordBreak: "break-word",
@@ -418,8 +418,8 @@ function QuoteCard({
           {guest && (
             <div
               style={{
-                backgroundColor: "#fff",
-                color: "#000",
+                backgroundColor: "#FFFFFF",
+                color: "#000000",
                 padding: "14px 28px",
                 borderRadius: 4,
                 fontSize: 26,
