@@ -14,72 +14,74 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [photo, setPhoto] = useState<string | null>(null);
-  const [podcast, setPodcast] = useState("بودكاست فنجان");
-  const [guest, setGuest] = useState("تركي البدر");
+  const [podcast, setPodcast] = useState("بودكاست تكنولوجيا الاعمال");
+  const [guest, setGuest] = useState("د.احمد السالمي");
   const [quote, setQuote] = useState(
-    "«التركيز من أكثر المهارات المظلومة في أي منظمة. الناس تهتم بالمؤهلات، وتهتم بأشياء كثيرة أخرى، لكن قليل من يلتفت إلى التركيز، مع أنه مهارة عظيمة جدًا في تحقيق النجاح، سواء للفرد أو للمنظمة.»"
+    "«التركيز من أكثر المهارات المطلوبة في أي منظمة. الناس تهتم بالمؤهلات، وتهتم بأشياء كثيرة أخرى، لكن قليل من يلتفت إلى التركيز، مع أنه مهارة عظيمة جدًا في تحقيق النجاح، سواء للفرد أو للمنظمة.»"
   );
   const [dragOver, setDragOver] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-
-  const handleFile = useCallback((file: File) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    const url = URL.createObjectURL(file);
-    setPhoto(url);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (photo) URL.revokeObjectURL(photo);
-    };
-  }, [photo]);
-
-  // Auto-scale quote font size to fit
-  const quoteFontSize = (() => {
-    const len = quote.length;
-    if (len < 80) return 54;
-    if (len < 140) return 46;
-    if (len < 200) return 40;
-    if (len < 280) return 34;
-    return 30;
-  })();
-
-  const exportImage = async (type: "png" | "jpg") => {
-    if (!cardRef.current) return;
-    const canvas = await html2canvas(cardRef.current, {
+...
+  const renderCanvas = async () => {
+    if (!cardRef.current) throw new Error("Card element not found");
+    return await html2canvas(cardRef.current, {
       width: 1080,
       height: 1080,
+      windowWidth: 1080,
+      windowHeight: 1080,
       scale: 1,
       useCORS: true,
+      allowTaint: true,
       backgroundColor: "#0F172A",
+      logging: false,
     });
-    const mime = type === "png" ? "image/png" : "image/jpeg";
-    const ext = type === "png" ? "png" : "jpg";
-    const dataUrl = canvas.toDataURL(mime, 0.95);
+  };
+
+  const triggerDownload = (dataUrl: string, filename: string) => {
     const a = document.createElement("a");
     a.href = dataUrl;
-    a.download = `quote-card.${ext}`;
+    a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+  };
+
+  const exportImage = async (type: "png" | "jpg") => {
+    try {
+      setExporting(true);
+      const canvas = await renderCanvas();
+      const mime = type === "png" ? "image/png" : "image/jpeg";
+      const ext = type === "png" ? "png" : "jpg";
+      const dataUrl = canvas.toDataURL(mime, 0.95);
+      triggerDownload(dataUrl, `podcast-quote-card.${ext}`);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const copyImage = async () => {
-    if (!cardRef.current) return;
-    const canvas = await html2canvas(cardRef.current, {
-      width: 1080,
-      height: 1080,
-      scale: 1,
-      useCORS: true,
-      backgroundColor: "#0F172A",
-    });
-    canvas.toBlob(async (blob) => {
-      if (!blob) return;
-      try {
-        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-        alert("Copied to clipboard");
-      } catch {
-        alert("Clipboard not supported in this browser");
-      }
-    });
+    try {
+      setExporting(true);
+      const canvas = await renderCanvas();
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+          alert("Copied to clipboard");
+        } catch {
+          alert("Clipboard not supported in this browser");
+        }
+      });
+    } catch (err) {
+      console.error("Copy failed:", err);
+      alert("Copy failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const reset = () => {
