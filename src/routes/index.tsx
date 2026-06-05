@@ -17,11 +17,11 @@ export const Route = createFileRoute("/")({
 const CARD_SIZE = 1080;
 const PHOTO_WIDTH = CARD_SIZE * 0.42;
 const TEXT_WIDTH = CARD_SIZE * 0.58;
-const PANEL_PADDING_X = 68;
-const PANEL_PADDING_Y = 70;
-const BADGE_WIDTH = 332;
-const BADGE_HEIGHT = 78;
-const QUOTE_LINE_HEIGHT = 1.82;
+const PANEL_PADDING_X = 56;
+const PANEL_PADDING_Y = 60;
+const BADGE_WIDTH = 320;
+const BADGE_HEIGHT = 80;
+const QUOTE_LINE_HEIGHT = 1.7;
 const CAIRO_FONT = '"Cairo", sans-serif';
 
 type ExportTypography = {
@@ -31,19 +31,13 @@ type ExportTypography = {
   quoteFontSize: number;
 };
 
-type ImagePosition = {
-  zoom: number;
-  x: number;
-  y: number;
-};
-
 async function waitForCairoFont({ podcast, guest, quote, quoteFontSize }: ExportTypography) {
   if (!("fonts" in document)) return;
 
   const fonts = document.fonts;
   await Promise.all([
-    fonts.load(`600 22px ${CAIRO_FONT}`, podcast || "بودكاست"),
-    fonts.load(`700 27px ${CAIRO_FONT}`, guest || "ضيف"),
+    fonts.load(`500 24px ${CAIRO_FONT}`, podcast || "بودكاست"),
+    fonts.load(`700 28px ${CAIRO_FONT}`, guest || "ضيف"),
     fonts.load(`700 ${quoteFontSize}px ${CAIRO_FONT}`, quote || "اقتباس"),
   ]);
   await fonts.ready;
@@ -51,53 +45,6 @@ async function waitForCairoFont({ podcast, guest, quote, quoteFontSize }: Export
 
 function nextFrame() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-}
-
-function splitLongToken(ctx: CanvasRenderingContext2D, token: string, maxWidth: number) {
-  const pieces: string[] = [];
-  let piece = "";
-  for (const char of Array.from(token)) {
-    const next = piece + char;
-    if (piece && ctx.measureText(next).width > maxWidth) {
-      pieces.push(piece);
-      piece = char;
-    } else {
-      piece = next;
-    }
-  }
-  if (piece) pieces.push(piece);
-  return pieces;
-}
-
-function wrapRtlText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
-  const lines: string[] = [];
-  const paragraphs = text.split(/\n/);
-
-  for (const paragraph of paragraphs) {
-    const words = paragraph.trim().split(/\s+/).filter(Boolean);
-    if (!words.length) {
-      lines.push("");
-      continue;
-    }
-
-    let line = "";
-    for (const word of words) {
-      const candidates =
-        ctx.measureText(word).width > maxWidth ? splitLongToken(ctx, word, maxWidth) : [word];
-      for (const candidate of candidates) {
-        const next = line ? `${line} ${candidate}` : candidate;
-        if (!line || ctx.measureText(next).width <= maxWidth) {
-          line = next;
-        } else {
-          lines.push(line);
-          line = candidate;
-        }
-      }
-    }
-    if (line) lines.push(line);
-  }
-
-  return lines;
 }
 
 async function waitForImages(element: HTMLElement) {
@@ -205,35 +152,12 @@ async function renderPreviewElementToCanvas(element: HTMLElement, typography: Ex
 }
 
 function calculateQuoteFontSize(quote: string) {
-  const normalizedQuote = quote.trim() || "اقتباس";
-  const length = normalizedQuote.length;
-  const maxSize = (() => {
-    if (length < 80) return 47;
-    if (length < 140) return 40;
-    if (length < 200) return 35;
-    if (length < 280) return 30;
-    return 26;
-  })();
-
-  if (typeof document === "undefined") return maxSize;
-
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return maxSize;
-
-  const quoteMaxWidth = TEXT_WIDTH - PANEL_PADDING_X * 2;
-  const quoteMaxHeight = CARD_SIZE - PANEL_PADDING_Y * 2 - 42 - BADGE_HEIGHT - 104;
-
-  for (let size = maxSize; size >= 24; size -= 1) {
-    ctx.font = `700 ${size}px ${CAIRO_FONT}`;
-    ctx.direction = "rtl";
-    const lines = wrapRtlText(ctx, normalizedQuote, quoteMaxWidth);
-    if (lines.length * size * QUOTE_LINE_HEIGHT <= quoteMaxHeight) {
-      return size;
-    }
-  }
-
-  return 24;
+  const length = quote.length;
+  if (length < 80) return 54;
+  if (length < 140) return 46;
+  if (length < 200) return 40;
+  if (length < 280) return 34;
+  return 30;
 }
 
 function readFileAsDataUrl(file: File) {
@@ -245,10 +169,6 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
-function imageObjectPosition(position: ImagePosition) {
-  return `${50 + position.x}% ${50 + position.y}%`;
-}
-
 function Index() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [podcast, setPodcast] = useState("بودكاست تكنولوجيا الاعمال");
@@ -256,7 +176,6 @@ function Index() {
   const [quote, setQuote] = useState(
     "«التركيز من أكثر المهارات المطلوبة في أي منظمة. الناس تهتم بالمؤهلات، وتهتم بأشياء كثيرة أخرى، لكن قليل من يلتفت إلى التركيز، مع أنه مهارة عظيمة جدًا في تحقيق النجاح، سواء للفرد أو للمنظمة.»",
   );
-  const [imagePosition, setImagePosition] = useState<ImagePosition>({ zoom: 1, x: 0, y: 0 });
   const [dragOver, setDragOver] = useState(false);
   const [exporting, setExporting] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -264,7 +183,6 @@ function Index() {
     if (!file || !file.type.startsWith("image/")) return;
     const dataUrl = await readFileAsDataUrl(file);
     setPhoto(dataUrl);
-    setImagePosition({ zoom: 1, x: 0, y: 0 });
   }, []);
 
   const quoteFontSize = calculateQuoteFontSize(quote);
@@ -351,7 +269,6 @@ function Index() {
 
   const reset = () => {
     setPhoto(null);
-    setImagePosition({ zoom: 1, x: 0, y: 0 });
     setPodcast("");
     setGuest("");
     setQuote("");
@@ -399,16 +316,9 @@ function Index() {
                   src={photo}
                   alt="guest"
                   className="mx-auto h-32 w-32 rounded-lg object-cover"
-                  style={{
-                    objectPosition: imageObjectPosition(imagePosition),
-                    transform: `scale(${imagePosition.zoom})`,
-                  }}
                 />
                 <button
-                  onClick={() => {
-                    setPhoto(null);
-                    setImagePosition({ zoom: 1, x: 0, y: 0 });
-                  }}
+                  onClick={() => setPhoto(null)}
                   className="text-xs text-[#94A3B8] hover:text-[#FFFFFF]"
                 >
                   Remove
@@ -427,50 +337,6 @@ function Index() {
               </label>
             )}
           </div>
-
-          {photo && (
-            <div className="space-y-4 rounded-xl border border-[#1E293B] bg-[#020617] p-4">
-              <Field label="Image Zoom">
-                <input
-                  type="range"
-                  min="1"
-                  max="2"
-                  step="0.01"
-                  value={imagePosition.zoom}
-                  onChange={(e) =>
-                    setImagePosition((current) => ({ ...current, zoom: Number(e.target.value) }))
-                  }
-                  className="w-full accent-[#FFFFFF]"
-                />
-              </Field>
-              <Field label="Image Horizontal Position">
-                <input
-                  type="range"
-                  min="-50"
-                  max="50"
-                  step="1"
-                  value={imagePosition.x}
-                  onChange={(e) =>
-                    setImagePosition((current) => ({ ...current, x: Number(e.target.value) }))
-                  }
-                  className="w-full accent-[#FFFFFF]"
-                />
-              </Field>
-              <Field label="Image Vertical Position">
-                <input
-                  type="range"
-                  min="-50"
-                  max="50"
-                  step="1"
-                  value={imagePosition.y}
-                  onChange={(e) =>
-                    setImagePosition((current) => ({ ...current, y: Number(e.target.value) }))
-                  }
-                  className="w-full accent-[#FFFFFF]"
-                />
-              </Field>
-            </div>
-          )}
 
           <Field label="Podcast Name">
             <input
@@ -572,7 +438,6 @@ function Index() {
                     guest={guest}
                     quote={quote}
                     quoteFontSize={quoteFontSize}
-                    imagePosition={imagePosition}
                   />
                 </div>
               </div>
@@ -601,7 +466,6 @@ function QuoteCard({
   guest,
   quote,
   quoteFontSize,
-  imagePosition,
   innerRef,
 }: {
   photo: string | null;
@@ -609,7 +473,6 @@ function QuoteCard({
   guest: string;
   quote: string;
   quoteFontSize: number;
-  imagePosition: ImagePosition;
   innerRef: React.Ref<HTMLDivElement>;
 }) {
   return (
@@ -645,9 +508,7 @@ function QuoteCard({
               width: "100%",
               height: "100%",
               objectFit: "cover",
-              objectPosition: imageObjectPosition(imagePosition),
-              transform: `scale(${imagePosition.zoom})`,
-              transformOrigin: imageObjectPosition(imagePosition),
+              objectPosition: "center",
               display: "block",
             }}
           />
@@ -688,11 +549,10 @@ function QuoteCard({
           dir="rtl"
           style={{
             textAlign: "right",
-            fontSize: 22,
-            lineHeight: 1.6,
-            fontWeight: 600,
+            fontSize: 24,
+            fontWeight: 500,
             color: "#CBD5E1",
-            letterSpacing: 0,
+            letterSpacing: "0.5px",
             fontFamily: CAIRO_FONT,
             unicodeBidi: "plaintext",
           }}
@@ -706,8 +566,7 @@ function QuoteCard({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "52px 0",
-            minHeight: 0,
+            padding: "32px 0",
           }}
         >
           <p
@@ -720,9 +579,7 @@ function QuoteCard({
               color: "#FFFFFF",
               margin: 0,
               textAlign: "right",
-              maxWidth: "100%",
               wordBreak: "break-word",
-              overflowWrap: "anywhere",
               fontFamily: CAIRO_FONT,
               unicodeBidi: "plaintext",
             }}
@@ -742,19 +599,14 @@ function QuoteCard({
                 backgroundColor: "#FFFFFF",
                 color: "#000000",
                 borderRadius: 4,
-                padding: "0 24px",
-                fontSize: 27,
+                fontSize: 28,
                 fontWeight: 700,
                 fontFamily: CAIRO_FONT,
                 unicodeBidi: "plaintext",
                 display: "grid",
                 placeItems: "center",
                 textAlign: "center",
-                lineHeight: 1.1,
-                boxSizing: "border-box",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                lineHeight: 1,
               }}
             >
               {guest}
