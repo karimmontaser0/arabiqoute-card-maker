@@ -353,6 +353,7 @@ function QuoteCard({
         width: 1080,
         height: 1080,
         backgroundColor: "#0F172A",
+        color: "#ffffff",
         fontFamily: "'Cairo', sans-serif",
         display: "flex",
         flexDirection: "row-reverse",
@@ -365,7 +366,6 @@ function QuoteCard({
           <img
             src={photo}
             alt=""
-            crossOrigin="anonymous"
             style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
           />
         ) : (
