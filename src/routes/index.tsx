@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useCallback } from "react";
-import html2canvas from "html2canvas";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -11,6 +10,212 @@ export const Route = createFileRoute("/")({
   }),
   component: Index,
 });
+
+const CARD_SIZE = 1080;
+const PHOTO_WIDTH = CARD_SIZE * 0.42;
+const TEXT_WIDTH = CARD_SIZE * 0.58;
+const PANEL_PADDING_X = 56;
+const PANEL_PADDING_Y = 60;
+const BADGE_WIDTH = 320;
+const BADGE_HEIGHT = 80;
+const CAIRO_FONT = '"Cairo", sans-serif';
+
+type ExportPayload = {
+  photo: string | null;
+  podcast: string;
+  guest: string;
+  quote: string;
+  quoteFontSize: number;
+};
+
+async function waitForCairoFont({ podcast, guest, quote, quoteFontSize }: ExportPayload) {
+  if (!("fonts" in document)) return;
+
+  const fonts = document.fonts;
+  await Promise.all([
+    fonts.load(`500 24px ${CAIRO_FONT}`, podcast || "بودكاست"),
+    fonts.load(`700 28px ${CAIRO_FONT}`, guest || "ضيف"),
+    fonts.load(`700 ${quoteFontSize}px ${CAIRO_FONT}`, quote || "اقتباس"),
+  ]);
+  await fonts.ready;
+}
+
+function setCairoFont(ctx: CanvasRenderingContext2D, weight: number, size: number) {
+  ctx.font = `${weight} ${size}px ${CAIRO_FONT}`;
+}
+
+function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function loadCanvasImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    if (!src.startsWith("blob:") && !src.startsWith("data:")) {
+      img.crossOrigin = "anonymous";
+    }
+    img.onload = async () => {
+      try {
+        await img.decode?.();
+      } catch {
+        // The image is already loaded; decode() can reject on some browsers for blob URLs.
+      }
+      resolve(img);
+    };
+    img.onerror = () => reject(new Error("Guest image could not be loaded for export"));
+    img.src = src;
+  });
+}
+
+function drawCoverImage(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) {
+  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+  const sourceWidth = width / scale;
+  const sourceHeight = height / scale;
+  const sourceX = (image.naturalWidth - sourceWidth) / 2;
+  const sourceY = (image.naturalHeight - sourceHeight) / 2;
+  ctx.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
+}
+
+function splitLongToken(ctx: CanvasRenderingContext2D, token: string, maxWidth: number) {
+  const pieces: string[] = [];
+  let piece = "";
+  for (const char of Array.from(token)) {
+    const next = piece + char;
+    if (piece && ctx.measureText(next).width > maxWidth) {
+      pieces.push(piece);
+      piece = char;
+    } else {
+      piece = next;
+    }
+  }
+  if (piece) pieces.push(piece);
+  return pieces;
+}
+
+function wrapRtlText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
+  const lines: string[] = [];
+  const paragraphs = text.split(/\n/);
+
+  for (const paragraph of paragraphs) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) {
+      lines.push("");
+      continue;
+    }
+
+    let line = "";
+    for (const word of words) {
+      const candidates = ctx.measureText(word).width > maxWidth ? splitLongToken(ctx, word, maxWidth) : [word];
+      for (const candidate of candidates) {
+        const next = line ? `${line} ${candidate}` : candidate;
+        if (!line || ctx.measureText(next).width <= maxWidth) {
+          line = next;
+        } else {
+          lines.push(line);
+          line = candidate;
+        }
+      }
+    }
+    if (line) lines.push(line);
+  }
+
+  return lines;
+}
+
+async function renderQuoteCardCanvas(payload: ExportPayload) {
+  await waitForCairoFont(payload);
+  const guestImage = payload.photo ? await loadCanvasImage(payload.photo) : null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = CARD_SIZE;
+  canvas.height = CARD_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas export is not supported in this browser");
+
+  ctx.fillStyle = "#0F172A";
+  ctx.fillRect(0, 0, CARD_SIZE, CARD_SIZE);
+
+  const photoX = CARD_SIZE - PHOTO_WIDTH;
+  if (guestImage) {
+    drawCoverImage(ctx, guestImage, photoX, 0, PHOTO_WIDTH, CARD_SIZE);
+  } else {
+    ctx.fillStyle = "#0F172A";
+    ctx.fillRect(photoX, 0, PHOTO_WIDTH, CARD_SIZE);
+    ctx.fillStyle = "#94A3B8";
+    setCairoFont(ctx, 400, 18);
+    ctx.direction = "ltr";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Guest Photo", photoX + PHOTO_WIDTH / 2, CARD_SIZE / 2);
+  }
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.fillRect(photoX, 0, PHOTO_WIDTH, CARD_SIZE);
+
+  const textRight = TEXT_WIDTH - PANEL_PADDING_X;
+  const textMaxWidth = TEXT_WIDTH - PANEL_PADDING_X * 2;
+
+  ctx.direction = "rtl";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#CBD5E1";
+  setCairoFont(ctx, 500, 24);
+  ctx.fillText(payload.podcast, textRight, PANEL_PADDING_Y, textMaxWidth);
+
+  ctx.fillStyle = "#FFFFFF";
+  setCairoFont(ctx, 700, payload.quoteFontSize);
+  ctx.direction = "rtl";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "top";
+
+  const topBlockHeight = Math.ceil(24 * 1.45);
+  const bottomBlockHeight = payload.guest ? BADGE_HEIGHT : 0;
+  const middleY = PANEL_PADDING_Y + topBlockHeight;
+  const middleHeight = CARD_SIZE - PANEL_PADDING_Y * 2 - topBlockHeight - bottomBlockHeight;
+  const quoteAreaY = middleY + 32;
+  const quoteAreaHeight = middleHeight - 64;
+  const lineHeight = payload.quoteFontSize * 1.7;
+  const quoteLines = wrapRtlText(ctx, payload.quote, textMaxWidth);
+  const quoteTop = quoteAreaY + Math.max(0, (quoteAreaHeight - quoteLines.length * lineHeight) / 2);
+
+  quoteLines.forEach((line, index) => {
+    ctx.fillText(line, textRight, quoteTop + index * lineHeight, textMaxWidth);
+  });
+
+  if (payload.guest) {
+    const badgeX = TEXT_WIDTH - PANEL_PADDING_X - BADGE_WIDTH;
+    const badgeY = CARD_SIZE - PANEL_PADDING_Y - BADGE_HEIGHT;
+    ctx.fillStyle = "#FFFFFF";
+    drawRoundedRect(ctx, badgeX, badgeY, BADGE_WIDTH, BADGE_HEIGHT, 4);
+    ctx.fill();
+
+    ctx.fillStyle = "#000000";
+    setCairoFont(ctx, 700, 28);
+    ctx.direction = "rtl";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(payload.guest, badgeX + BADGE_WIDTH / 2, badgeY + BADGE_HEIGHT / 2, BADGE_WIDTH - 28);
+  }
+
+  return canvas;
+}
 
 function Index() {
   const [photo, setPhoto] = useState<string | null>(null);
