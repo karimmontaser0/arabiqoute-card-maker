@@ -4,7 +4,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Design system colors are HEX/RGB for html2canvas compatibility. */
+/* Design system colors are HEX/RGB for canvas export compatibility. */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
