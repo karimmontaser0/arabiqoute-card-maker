@@ -276,6 +276,12 @@ function Index() {
             >
               Reset
             </button>
+            <button
+              onClick={debugExport}
+              className="col-span-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-200 transition hover:bg-amber-500/20"
+            >
+              Debug Export (logs to console)
+            </button>
           </div>
         </section>
 
