@@ -18,14 +18,14 @@ const CARD_SIZE = 1080;
 const PHOTO_WIDTH = CARD_SIZE * 0.42;
 const TEXT_WIDTH = CARD_SIZE * 0.58;
 const PANEL_PADDING_X = 56;
-const QUOTE_CONTENT_WIDTH = (TEXT_WIDTH - PANEL_PADDING_X * 2) * 0.92;
+const QUOTE_CONTENT_WIDTH = TEXT_WIDTH - PANEL_PADDING_X * 2;
+const SHORT_QUOTE_CONTENT_WIDTH = QUOTE_CONTENT_WIDTH * 0.75;
 const BADGE_WIDTH = 320;
 const BADGE_HEIGHT = 80;
 const PODCAST_TOP = 80;
-const BADGE_BOTTOM = 70;
+const BADGE_BOTTOM = 60;
 const QUOTE_TOP = 235;
 const QUOTE_HEIGHT = 575;
-const QUOTE_BASE_LINE_HEIGHT = 1.7;
 const CAIRO_FONT = '"Cairo", sans-serif';
 
 type ExportTypography = {
@@ -39,6 +39,58 @@ type QuoteTypography = {
   fontSize: number;
   lineHeight: number;
   letterSpacing: number;
+  contentWidth: number;
+};
+
+type QuoteMeasurement = {
+  fill: number;
+  height: number;
+  lines: number;
+};
+
+type QuoteScaleProfile = {
+  contentWidth: number;
+  fontSize: number;
+  minFontSize: number;
+  lineHeight: number;
+  minFill: number;
+  maxFill: number;
+};
+
+const SHORT_QUOTE_PROFILE: QuoteScaleProfile = {
+  contentWidth: SHORT_QUOTE_CONTENT_WIDTH,
+  fontSize: 72,
+  minFontSize: 64,
+  lineHeight: 1.35,
+  minFill: 0.3,
+  maxFill: 0.4,
+};
+
+const MEDIUM_QUOTE_PROFILE: QuoteScaleProfile = {
+  contentWidth: QUOTE_CONTENT_WIDTH,
+  fontSize: 58,
+  minFontSize: 40,
+  lineHeight: 1.4,
+  minFill: 0.5,
+  maxFill: 0.75,
+};
+
+const LONG_QUOTE_PROFILE: QuoteScaleProfile = {
+  contentWidth: QUOTE_CONTENT_WIDTH,
+  fontSize: 46,
+  minFontSize: 40,
+  lineHeight: 1.45,
+  minFill: 0.7,
+  maxFill: 0.85,
+};
+
+const VERY_LONG_QUOTE_PROFILE: QuoteScaleProfile = {
+  contentWidth: QUOTE_CONTENT_WIDTH,
+  fontSize: 40,
+  minFontSize: 24,
+  lineHeight: 1.5,
+  minFill: 0.85,
+  maxFill: 0.95,
 };
 
 async function waitForCairoFont({ podcast, guest, quote, quoteFontSize }: ExportTypography) {
@@ -208,22 +260,110 @@ async function renderPreviewElementToCanvas(element: HTMLElement, typography: Ex
   return canvas;
 }
 
-function baseQuoteFontSize(quote: string) {
-  const length = quote.length;
-  if (length < 80) return 54;
-  if (length < 140) return 46;
-  if (length < 200) return 40;
-  if (length < 280) return 34;
-  return 30;
+function measureQuote(
+  ctx: CanvasRenderingContext2D,
+  quote: string,
+  fontSize: number,
+  lineHeight: number,
+  contentWidth: number,
+): QuoteMeasurement {
+  ctx.font = `700 ${fontSize}px ${CAIRO_FONT}`;
+  ctx.direction = "rtl";
+  const lines = wrapRtlText(ctx, quote, contentWidth);
+  const height = lines.length * fontSize * lineHeight;
+
+  return {
+    fill: height / QUOTE_HEIGHT,
+    height,
+    lines: lines.length,
+  };
+}
+
+function selectQuoteProfile(ctx: CanvasRenderingContext2D, quote: string) {
+  const shortMeasure = measureQuote(
+    ctx,
+    quote,
+    SHORT_QUOTE_PROFILE.fontSize,
+    SHORT_QUOTE_PROFILE.lineHeight,
+    SHORT_QUOTE_PROFILE.contentWidth,
+  );
+  if (quote.length <= 70 || shortMeasure.lines <= 2) {
+    return SHORT_QUOTE_PROFILE;
+  }
+
+  const mediumMeasure = measureQuote(
+    ctx,
+    quote,
+    MEDIUM_QUOTE_PROFILE.fontSize,
+    MEDIUM_QUOTE_PROFILE.lineHeight,
+    MEDIUM_QUOTE_PROFILE.contentWidth,
+  );
+  if (quote.length <= 210 && mediumMeasure.lines <= 8) {
+    return MEDIUM_QUOTE_PROFILE;
+  }
+
+  const longMeasure = measureQuote(
+    ctx,
+    quote,
+    LONG_QUOTE_PROFILE.fontSize,
+    LONG_QUOTE_PROFILE.lineHeight,
+    LONG_QUOTE_PROFILE.contentWidth,
+  );
+  if (quote.length <= 430 && longMeasure.lines >= 9) {
+    return LONG_QUOTE_PROFILE;
+  }
+
+  return VERY_LONG_QUOTE_PROFILE;
+}
+
+function fitQuoteTypography(
+  ctx: CanvasRenderingContext2D,
+  quote: string,
+  profile: QuoteScaleProfile,
+): QuoteTypography {
+  let fallback: QuoteTypography = {
+    fontSize: profile.minFontSize,
+    lineHeight: profile.lineHeight,
+    letterSpacing: 0,
+    contentWidth: profile.contentWidth,
+  };
+
+  for (let fontSize = profile.fontSize; fontSize >= profile.minFontSize; fontSize -= 1) {
+    const measurement = measureQuote(
+      ctx,
+      quote,
+      fontSize,
+      profile.lineHeight,
+      profile.contentWidth,
+    );
+
+    if (measurement.fill <= profile.maxFill) {
+      return {
+        fontSize,
+        lineHeight: profile.lineHeight,
+        letterSpacing: 0,
+        contentWidth: profile.contentWidth,
+      };
+    }
+
+    fallback = {
+      fontSize,
+      lineHeight: profile.lineHeight,
+      letterSpacing: 0,
+      contentWidth: profile.contentWidth,
+    };
+  }
+
+  return fallback;
 }
 
 function calculateQuoteTypography(quote: string): QuoteTypography {
   const normalizedQuote = quote.trim() || "اقتباس";
-  const baseFontSize = baseQuoteFontSize(normalizedQuote);
   const fallback = {
-    fontSize: baseFontSize,
-    lineHeight: QUOTE_BASE_LINE_HEIGHT,
+    fontSize: MEDIUM_QUOTE_PROFILE.fontSize,
+    lineHeight: MEDIUM_QUOTE_PROFILE.lineHeight,
     letterSpacing: 0,
+    contentWidth: QUOTE_CONTENT_WIDTH,
   };
 
   if (typeof document === "undefined") return fallback;
@@ -232,22 +372,36 @@ function calculateQuoteTypography(quote: string): QuoteTypography {
   const ctx = canvas.getContext("2d");
   if (!ctx) return fallback;
 
-  const maxWidth = QUOTE_CONTENT_WIDTH;
-  const lineHeightOptions = [1.7, 1.62, 1.54, 1.46, 1.38, 1.3, 1.22, 1.15];
+  const profile = selectQuoteProfile(ctx, normalizedQuote);
+  const fittedTypography = fitQuoteTypography(ctx, normalizedQuote, profile);
+  const fittedMeasurement = measureQuote(
+    ctx,
+    normalizedQuote,
+    fittedTypography.fontSize,
+    fittedTypography.lineHeight,
+    fittedTypography.contentWidth,
+  );
 
-  for (let fontSize = baseFontSize; fontSize >= 14; fontSize -= 1) {
-    ctx.font = `700 ${fontSize}px ${CAIRO_FONT}`;
-    ctx.direction = "rtl";
-    const lines = wrapRtlText(ctx, normalizedQuote, maxWidth);
+  if (fittedMeasurement.fill <= 1) return fittedTypography;
 
-    for (const lineHeight of lineHeightOptions) {
-      if (lines.length * fontSize * lineHeight <= QUOTE_HEIGHT) {
-        return { fontSize, lineHeight, letterSpacing: 0 };
-      }
+  for (let fontSize = fittedTypography.fontSize - 1; fontSize >= 18; fontSize -= 1) {
+    const measurement = measureQuote(
+      ctx,
+      normalizedQuote,
+      fontSize,
+      fittedTypography.lineHeight,
+      fittedTypography.contentWidth,
+    );
+
+    if (measurement.fill <= 0.95) {
+      return {
+        ...fittedTypography,
+        fontSize,
+      };
     }
   }
 
-  return { fontSize: 14, lineHeight: 1.15, letterSpacing: 0 };
+  return fittedTypography;
 }
 
 function readFileAsDataUrl(file: File) {
@@ -674,7 +828,7 @@ function QuoteCard({
               fontWeight: 700,
               color: "#FFFFFF",
               margin: 0,
-              width: QUOTE_CONTENT_WIDTH,
+              width: quoteTypography.contentWidth,
               textAlign: "right",
               wordBreak: "break-word",
               fontFamily: CAIRO_FONT,
