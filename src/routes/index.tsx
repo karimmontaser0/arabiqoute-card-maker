@@ -247,72 +247,11 @@ function Index() {
     if (len < 280) return 34;
     return 30;
   })();
-  const waitForImages = async (root: HTMLElement) => {
-    const imgs = Array.from(root.querySelectorAll("img"));
-    console.log(`[export] waiting for ${imgs.length} image(s)...`);
-    await Promise.all(
-      imgs.map(
-        (img) =>
-          new Promise<void>((resolve) => {
-            if (img.complete && img.naturalWidth > 0) return resolve();
-            img.onload = () => resolve();
-            img.onerror = () => {
-              console.warn("[export] image failed to load:", img.src);
-              resolve();
-            };
-          })
-      )
-    );
-    if ((document as any).fonts?.ready) {
-      const f: any = (document as any).fonts;
-      if (f?.load) {
-        try {
-          await Promise.all([
-            f.load('500 24px "Cairo"', "بودكاست تكنولوجيا الاعمال"),
-            f.load('700 28px "Cairo"', "د.احمد السالمي"),
-            f.load('700 40px "Cairo"', "التركيز"),
-            f.load('400 22px "Cairo"', "اقتباس"),
-          ]);
-        } catch {}
-      }
-      await f.ready;
-      console.log("[export] fonts ready");
-    }
-  };
-
   const renderCanvas = async () => {
-    if (!cardRef.current) throw new Error("Card element not found");
-    const el = cardRef.current;
-    const scaledWrapper = el.parentElement as HTMLElement | null;
-    const outerWrapper = scaledWrapper?.parentElement as HTMLElement | null;
-
-    // Temporarily neutralize the preview scale transform so html2canvas
-    // captures the card at its real 1080x1080 pixel size.
-    const prevScaled = scaledWrapper?.style.transform ?? "";
-    const prevOuter = outerWrapper?.style.transform ?? "";
-    if (scaledWrapper) scaledWrapper.style.transform = "none";
-    if (outerWrapper) outerWrapper.style.transform = "none";
-
-    try {
-      await waitForImages(el);
-      console.log("[export] calling html2canvas...");
-      const canvas = await html2canvas(el, {
-        scale: 1,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: null,
-        width: 1080,
-        height: 1080,
-        windowWidth: 1080,
-        windowHeight: 1080,
-        logging: true,
-      });
-      console.log(`[export] canvas ready: ${canvas.width}x${canvas.height}`);
-      return canvas;
-    } finally {
-      if (scaledWrapper) scaledWrapper.style.transform = prevScaled;
-      if (outerWrapper) outerWrapper.style.transform = prevOuter;
-    }
+    console.log("[export] rendering quote card with manual canvas...");
+    const canvas = await renderQuoteCardCanvas({ photo, podcast, guest, quote, quoteFontSize });
+    console.log(`[export] canvas ready: ${canvas.width}x${canvas.height}`);
+    return canvas;
   };
 
   const triggerDownload = (dataUrl: string, filename: string) => {
@@ -347,7 +286,7 @@ function Index() {
     try {
       setExporting(true);
       const canvas = await renderCanvas();
-      canvas.toBlob(async (blob) => {
+      canvas.toBlob(async (blob: Blob | null) => {
         if (!blob) return;
         try {
           await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
