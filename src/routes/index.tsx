@@ -220,13 +220,130 @@ function Index() {
                   }}
                 >
                   <QuoteCard
-                    ref={cardRef}
+                    innerRef={cardRef}
                     photo={photo}
                     podcast={podcast}
                     guest={guest}
                     quote={quote}
                     quoteFontSize={quoteFontSize}
                   />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <div className="mb-1.5 text-xs font-medium uppercase tracking-wider text-slate-400">{label}</div>
+      {children}
+    </label>
+  );
+}
+
+function QuoteCard({
+  photo,
+  podcast,
+  guest,
+  quote,
+  quoteFontSize,
+  innerRef,
+}: {
+  photo: string | null;
+  podcast: string;
+  guest: string;
+  quote: string;
+  quoteFontSize: number;
+  innerRef: React.Ref<HTMLDivElement>;
+}) {
+  return (
+    <div
+      ref={innerRef}
+      style={{
+        width: 1080,
+        height: 1080,
+        backgroundColor: "#0F172A",
+        fontFamily: "'Cairo', sans-serif",
+        display: "flex",
+        flexDirection: "row-reverse",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ width: "42%", height: "100%", position: "relative", backgroundColor: "#1e293b" }}>
+        {photo ? (
+          <img
+            src={photo}
+            alt=""
+            crossOrigin="anonymous"
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
+          />
+        ) : (
+          <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "#475569", fontSize: 18 }}>
+            Guest Photo
+          </div>
+        )}
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }} />
+      </div>
+
+      <div
+        dir="rtl"
+        style={{
+          width: "58%",
+          height: "100%",
+          padding: "60px 56px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          color: "#fff",
+        }}
+      >
+        <div style={{ textAlign: "left", fontSize: 22, fontWeight: 500, opacity: 0.85, letterSpacing: "0.5px" }}>
+          {podcast}
+        </div>
+
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "32px 0" }}>
+          <p
+            style={{
+              fontSize: quoteFontSize,
+              lineHeight: 1.7,
+              fontWeight: 700,
+              color: "#fff",
+              margin: 0,
+              textAlign: "right",
+              wordBreak: "break-word",
+            }}
+          >
+            {quote}
+          </p>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-start" }}>
+          {guest && (
+            <div
+              style={{
+                backgroundColor: "#fff",
+                color: "#000",
+                padding: "14px 28px",
+                borderRadius: 4,
+                fontSize: 26,
+                fontWeight: 700,
+              }}
+            >
+              {guest}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
                 </div>
               </div>
             </div>
