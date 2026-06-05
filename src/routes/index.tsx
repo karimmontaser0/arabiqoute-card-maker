@@ -60,6 +60,16 @@ function Index() {
     );
     if ((document as any).fonts?.ready) {
       await (document as any).fonts.ready;
+      // Explicitly load Cairo weights used in the card with Arabic sample text
+      const f: any = (document as any).fonts;
+      if (f?.load) {
+        await Promise.all([
+          f.load('500 24px "Cairo"', "بودكاست"),
+          f.load('700 28px "Cairo"', "ضيف"),
+          f.load('700 40px "Cairo"', "اقتباس"),
+podcast_sample
+        ].filter(Boolean)).catch(() => {});
+      }
       console.log("[export] fonts ready");
     }
   };
