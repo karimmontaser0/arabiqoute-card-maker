@@ -18,10 +18,14 @@ const CARD_SIZE = 1080;
 const PHOTO_WIDTH = CARD_SIZE * 0.42;
 const TEXT_WIDTH = CARD_SIZE * 0.58;
 const PANEL_PADDING_X = 56;
-const PANEL_PADDING_Y = 60;
+const QUOTE_CONTENT_WIDTH = (TEXT_WIDTH - PANEL_PADDING_X * 2) * 0.92;
 const BADGE_WIDTH = 320;
 const BADGE_HEIGHT = 80;
-const QUOTE_LINE_HEIGHT = 1.7;
+const PODCAST_TOP = 80;
+const BADGE_BOTTOM = 70;
+const QUOTE_TOP = 235;
+const QUOTE_HEIGHT = 575;
+const QUOTE_BASE_LINE_HEIGHT = 1.7;
 const CAIRO_FONT = '"Cairo", sans-serif';
 
 type ExportTypography = {
@@ -29,6 +33,12 @@ type ExportTypography = {
   guest: string;
   quote: string;
   quoteFontSize: number;
+};
+
+type QuoteTypography = {
+  fontSize: number;
+  lineHeight: number;
+  letterSpacing: number;
 };
 
 async function waitForCairoFont({ podcast, guest, quote, quoteFontSize }: ExportTypography) {
@@ -45,6 +55,53 @@ async function waitForCairoFont({ podcast, guest, quote, quoteFontSize }: Export
 
 function nextFrame() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+function splitLongToken(ctx: CanvasRenderingContext2D, token: string, maxWidth: number) {
+  const pieces: string[] = [];
+  let piece = "";
+  for (const char of Array.from(token)) {
+    const next = piece + char;
+    if (piece && ctx.measureText(next).width > maxWidth) {
+      pieces.push(piece);
+      piece = char;
+    } else {
+      piece = next;
+    }
+  }
+  if (piece) pieces.push(piece);
+  return pieces;
+}
+
+function wrapRtlText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
+  const lines: string[] = [];
+  const paragraphs = text.split(/\n/);
+
+  for (const paragraph of paragraphs) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) {
+      lines.push("");
+      continue;
+    }
+
+    let line = "";
+    for (const word of words) {
+      const candidates =
+        ctx.measureText(word).width > maxWidth ? splitLongToken(ctx, word, maxWidth) : [word];
+      for (const candidate of candidates) {
+        const next = line ? `${line} ${candidate}` : candidate;
+        if (!line || ctx.measureText(next).width <= maxWidth) {
+          line = next;
+        } else {
+          lines.push(line);
+          line = candidate;
+        }
+      }
+    }
+    if (line) lines.push(line);
+  }
+
+  return lines;
 }
 
 async function waitForImages(element: HTMLElement) {
@@ -151,13 +208,46 @@ async function renderPreviewElementToCanvas(element: HTMLElement, typography: Ex
   return canvas;
 }
 
-function calculateQuoteFontSize(quote: string) {
+function baseQuoteFontSize(quote: string) {
   const length = quote.length;
   if (length < 80) return 54;
   if (length < 140) return 46;
   if (length < 200) return 40;
   if (length < 280) return 34;
   return 30;
+}
+
+function calculateQuoteTypography(quote: string): QuoteTypography {
+  const normalizedQuote = quote.trim() || "اقتباس";
+  const baseFontSize = baseQuoteFontSize(normalizedQuote);
+  const fallback = {
+    fontSize: baseFontSize,
+    lineHeight: QUOTE_BASE_LINE_HEIGHT,
+    letterSpacing: 0,
+  };
+
+  if (typeof document === "undefined") return fallback;
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return fallback;
+
+  const maxWidth = QUOTE_CONTENT_WIDTH;
+  const lineHeightOptions = [1.7, 1.62, 1.54, 1.46, 1.38, 1.3, 1.22, 1.15];
+
+  for (let fontSize = baseFontSize; fontSize >= 14; fontSize -= 1) {
+    ctx.font = `700 ${fontSize}px ${CAIRO_FONT}`;
+    ctx.direction = "rtl";
+    const lines = wrapRtlText(ctx, normalizedQuote, maxWidth);
+
+    for (const lineHeight of lineHeightOptions) {
+      if (lines.length * fontSize * lineHeight <= QUOTE_HEIGHT) {
+        return { fontSize, lineHeight, letterSpacing: 0 };
+      }
+    }
+  }
+
+  return { fontSize: 14, lineHeight: 1.15, letterSpacing: 0 };
 }
 
 function readFileAsDataUrl(file: File) {
@@ -185,7 +275,7 @@ function Index() {
     setPhoto(dataUrl);
   }, []);
 
-  const quoteFontSize = calculateQuoteFontSize(quote);
+  const quoteTypography = calculateQuoteTypography(quote);
 
   const renderCanvas = async () => {
     if (!cardRef.current) throw new Error("Live preview is not ready yet");
@@ -194,7 +284,7 @@ function Index() {
       podcast,
       guest,
       quote,
-      quoteFontSize,
+      quoteFontSize: quoteTypography.fontSize,
     });
     console.log(`[export] canvas ready: ${canvas.width}x${canvas.height}`);
     return canvas;
@@ -437,7 +527,7 @@ function Index() {
                     podcast={podcast}
                     guest={guest}
                     quote={quote}
-                    quoteFontSize={quoteFontSize}
+                    quoteTypography={quoteTypography}
                   />
                 </div>
               </div>
@@ -465,14 +555,14 @@ function QuoteCard({
   podcast,
   guest,
   quote,
-  quoteFontSize,
+  quoteTypography,
   innerRef,
 }: {
   photo: string | null;
   podcast: string;
   guest: string;
   quote: string;
-  quoteFontSize: number;
+  quoteTypography: QuoteTypography;
   innerRef: React.Ref<HTMLDivElement>;
 }) {
   return (
@@ -537,10 +627,7 @@ function QuoteCard({
         style={{
           width: TEXT_WIDTH,
           height: "100%",
-          padding: `${PANEL_PADDING_Y}px ${PANEL_PADDING_X}px`,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
+          position: "relative",
           color: "#FFFFFF",
           fontFamily: CAIRO_FONT,
         }}
@@ -549,7 +636,11 @@ function QuoteCard({
           dir="rtl"
           style={{
             textAlign: "right",
-            fontSize: 24,
+            position: "absolute",
+            top: PODCAST_TOP,
+            right: PANEL_PADDING_X,
+            left: PANEL_PADDING_X,
+            fontSize: 28,
             fontWeight: 500,
             color: "#CBD5E1",
             letterSpacing: "0.5px",
@@ -561,23 +652,29 @@ function QuoteCard({
         </div>
 
         <div
+          data-export-quote-area="true"
           style={{
-            flex: 1,
+            position: "absolute",
+            top: QUOTE_TOP,
+            right: PANEL_PADDING_X,
+            left: PANEL_PADDING_X,
+            height: QUOTE_HEIGHT,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "32px 0",
           }}
         >
           <p
             dir="rtl"
             data-export-quote="true"
             style={{
-              fontSize: quoteFontSize,
-              lineHeight: QUOTE_LINE_HEIGHT,
+              fontSize: quoteTypography.fontSize,
+              lineHeight: quoteTypography.lineHeight,
+              letterSpacing: quoteTypography.letterSpacing,
               fontWeight: 700,
               color: "#FFFFFF",
               margin: 0,
+              width: QUOTE_CONTENT_WIDTH,
               textAlign: "right",
               wordBreak: "break-word",
               fontFamily: CAIRO_FONT,
@@ -588,7 +685,15 @@ function QuoteCard({
           </p>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-start" }}>
+        <div
+          style={{
+            position: "absolute",
+            right: PANEL_PADDING_X,
+            bottom: BADGE_BOTTOM,
+            display: "flex",
+            justifyContent: "flex-start",
+          }}
+        >
           {guest && (
             <div
               dir="rtl"
