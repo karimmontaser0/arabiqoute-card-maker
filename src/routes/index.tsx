@@ -27,6 +27,10 @@ const BADGE_BOTTOM = 60;
 const QUOTE_TOP = 235;
 const QUOTE_HEIGHT = 575;
 const CAIRO_FONT = '"Cairo", sans-serif';
+const CAIRO_FONT_CSS_URL =
+  "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap";
+
+let embeddedCairoFontCssPromise: Promise<string> | null = null;
 
 type ExportTypography = {
   podcast: string;
@@ -107,6 +111,97 @@ async function waitForCairoFont({ podcast, guest, quote, quoteFontSize }: Export
 
 function nextFrame() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+
+  return btoa(binary);
+}
+
+function copyComputedTypographyStyles(source: Element, target: Element) {
+  const sourceStyle = getComputedStyle(source);
+  const targetStyle = (target as HTMLElement).style;
+  const properties = [
+    "color",
+    "direction",
+    "font-family",
+    "font-feature-settings",
+    "font-kerning",
+    "font-size",
+    "font-style",
+    "font-synthesis",
+    "font-synthesis-style",
+    "font-synthesis-weight",
+    "font-variant",
+    "font-weight",
+    "letter-spacing",
+    "line-height",
+    "text-align",
+    "text-rendering",
+    "unicode-bidi",
+    "white-space",
+    "word-break",
+  ];
+
+  properties.forEach((property) => {
+    targetStyle.setProperty(property, sourceStyle.getPropertyValue(property));
+  });
+  targetStyle.setProperty("font-synthesis-weight", "none");
+}
+
+function copyComputedTypographyTree(source: Element, target: Element) {
+  copyComputedTypographyStyles(source, target);
+
+  Array.from(source.children).forEach((sourceChild, index) => {
+    const targetChild = target.children[index];
+    if (targetChild) copyComputedTypographyTree(sourceChild, targetChild);
+  });
+}
+
+async function embedFontUrls(cssText: string) {
+  const fontUrls = Array.from(cssText.matchAll(/url\(([^)]+)\)/g), (match) =>
+    match[1].replace(/['"]/g, ""),
+  );
+  const replacements = new Map<string, string>();
+
+  await Promise.all(
+    fontUrls.map(async (fontUrl) => {
+      if (replacements.has(fontUrl)) return;
+      const response = await fetch(fontUrl);
+      if (!response.ok) throw new Error(`Could not load Cairo font file: ${fontUrl}`);
+      const contentType = response.headers.get("content-type") || "font/woff2";
+      const fontBuffer = await response.arrayBuffer();
+      replacements.set(fontUrl, `data:${contentType};base64,${arrayBufferToBase64(fontBuffer)}`);
+    }),
+  );
+
+  return cssText.replace(/url\(([^)]+)\)/g, (match, rawUrl: string) => {
+    const fontUrl = rawUrl.replace(/['"]/g, "");
+    const dataUrl = replacements.get(fontUrl);
+    return dataUrl ? `url("${dataUrl}")` : match;
+  });
+}
+
+async function getEmbeddedCairoFontCss() {
+  embeddedCairoFontCssPromise ??= (async () => {
+    try {
+      const response = await fetch(CAIRO_FONT_CSS_URL);
+      if (!response.ok) throw new Error("Could not load Cairo font CSS");
+      const cssText = await response.text();
+      return await embedFontUrls(cssText);
+    } catch (error) {
+      console.warn("[export] Cairo font embedding failed; using document-loaded fonts", error);
+      return "";
+    }
+  })();
+
+  return embeddedCairoFontCssPromise;
 }
 
 function splitLongToken(ctx: CanvasRenderingContext2D, token: string, maxWidth: number) {
@@ -210,11 +305,12 @@ async function waitForExportReadiness(element: HTMLElement, typography: ExportTy
   await waitForLayoutStabilization(element);
 }
 
-function serializePreviewNode(element: HTMLElement) {
+function serializePreviewNode(element: HTMLElement, fontCss: string) {
   const clone = element.cloneNode(true) as HTMLElement;
   clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
   clone.style.margin = "0";
   clone.style.transform = "none";
+  copyComputedTypographyTree(element, clone);
 
   const wrapper = document.createElement("div");
   wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
@@ -222,6 +318,11 @@ function serializePreviewNode(element: HTMLElement) {
   wrapper.style.height = `${CARD_SIZE}px`;
   wrapper.style.margin = "0";
   wrapper.style.fontFamily = CAIRO_FONT;
+  if (fontCss) {
+    const style = document.createElement("style");
+    style.textContent = fontCss;
+    wrapper.appendChild(style);
+  }
   wrapper.appendChild(clone);
 
   return new XMLSerializer().serializeToString(wrapper);
@@ -248,7 +349,8 @@ function loadSvgImage(svg: string) {
 async function renderPreviewElementToCanvas(element: HTMLElement, typography: ExportTypography) {
   await waitForExportReadiness(element, typography);
 
-  const html = serializePreviewNode(element);
+  const fontCss = await getEmbeddedCairoFontCss();
+  const html = serializePreviewNode(element, fontCss);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_SIZE}" height="${CARD_SIZE}" viewBox="0 0 ${CARD_SIZE} ${CARD_SIZE}"><foreignObject width="100%" height="100%">${html}</foreignObject></svg>`;
   const image = await loadSvgImage(svg);
   const canvas = document.createElement("canvas");
