@@ -59,36 +59,36 @@ type QuoteScaleProfile = {
 
 const SHORT_QUOTE_PROFILE: QuoteScaleProfile = {
   contentWidth: SHORT_QUOTE_CONTENT_WIDTH,
-  fontSize: 72,
-  minFontSize: 64,
-  lineHeight: 1.35,
+  fontSize: 56,
+  minFontSize: 50,
+  lineHeight: 1.42,
   minFill: 0.3,
   maxFill: 0.4,
 };
 
 const MEDIUM_QUOTE_PROFILE: QuoteScaleProfile = {
   contentWidth: QUOTE_CONTENT_WIDTH,
-  fontSize: 58,
-  minFontSize: 40,
-  lineHeight: 1.4,
+  fontSize: 50,
+  minFontSize: 38,
+  lineHeight: 1.45,
   minFill: 0.5,
   maxFill: 0.75,
 };
 
 const LONG_QUOTE_PROFILE: QuoteScaleProfile = {
   contentWidth: QUOTE_CONTENT_WIDTH,
-  fontSize: 46,
-  minFontSize: 40,
-  lineHeight: 1.45,
+  fontSize: 38,
+  minFontSize: 32,
+  lineHeight: 1.48,
   minFill: 0.7,
   maxFill: 0.85,
 };
 
 const VERY_LONG_QUOTE_PROFILE: QuoteScaleProfile = {
   contentWidth: QUOTE_CONTENT_WIDTH,
-  fontSize: 40,
-  minFontSize: 24,
-  lineHeight: 1.5,
+  fontSize: 34,
+  minFontSize: 22,
+  lineHeight: 1.45,
   minFill: 0.85,
   maxFill: 0.95,
 };
